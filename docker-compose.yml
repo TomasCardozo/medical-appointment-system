@@ -1,0 +1,224 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./infrastructure/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 8
+
+  config-server:
+    image: ghcr.io/tomascardozo/medical-appointment-system/config-server:latest
+    environment:
+      CONFIG_SERVER_PORT: 8888
+      CONFIG_REPO_PATH: file:/config-repo
+    ports:
+      - "${CONFIG_SERVER_PORT:-8888}:8888"
+    volumes:
+      - ./infrastructure/config-repo:/config-repo:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8888/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  discovery-server:
+    image: ghcr.io/tomascardozo/medical-appointment-system/discovery-server:latest
+    environment:
+      CONFIG_SERVER_URL: http://config-server:8888
+      SPRING_PROFILES_ACTIVE: docker
+      DISCOVERY_SERVER_PORT: 8761
+    ports:
+      - "${DISCOVERY_SERVER_PORT:-8761}:8761"
+    depends_on:
+      config-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8761/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  api-gateway:
+    image: ghcr.io/tomascardozo/medical-appointment-system/api-gateway:latest
+    environment:
+      CONFIG_SERVER_URL: http://config-server:8888
+      SPRING_PROFILES_ACTIVE: docker
+      API_GATEWAY_PORT: 8080
+      EUREKA_SERVER_URL: http://discovery-server:8761/eureka
+    ports:
+      - "${API_GATEWAY_PORT:-8080}:8080"
+    depends_on:
+      config-server:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  auth-service:
+    image: ghcr.io/tomascardozo/medical-appointment-system/auth-service:latest
+    environment:
+      CONFIG_SERVER_URL: http://config-server:8888
+      SPRING_PROFILES_ACTIVE: docker
+      AUTH_SERVICE_PORT: 8081
+      EUREKA_SERVER_URL: http://discovery-server:8761/eureka
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:-replace-this-with-a-long-secret-key-at-least-32-bytes}
+      AUTH_JWT_EXPIRATION_MS: ${AUTH_JWT_EXPIRATION_MS:-3600000}
+    ports:
+      - "${AUTH_SERVICE_PORT:-8081}:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8081/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  doctor-service:
+    image: ghcr.io/tomascardozo/medical-appointment-system/doctor-service:latest
+    environment:
+      CONFIG_SERVER_URL: http://config-server:8888
+      SPRING_PROFILES_ACTIVE: docker
+      DOCTOR_SERVICE_PORT: 8082
+      EUREKA_SERVER_URL: http://discovery-server:8761/eureka
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:-replace-this-with-a-long-secret-key-at-least-32-bytes}
+    ports:
+      - "${DOCTOR_SERVICE_PORT:-8082}:8082"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8082/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  appointment-service:
+    image: ghcr.io/tomascardozo/medical-appointment-system/appointment-service:latest
+    environment:
+      CONFIG_SERVER_URL: http://config-server:8888
+      SPRING_PROFILES_ACTIVE: docker
+      APPOINTMENT_SERVICE_PORT: 8083
+      EUREKA_SERVER_URL: http://discovery-server:8761/eureka
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:-replace-this-with-a-long-secret-key-at-least-32-bytes}
+    ports:
+      - "${APPOINTMENT_SERVICE_PORT:-8083}:8083"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8083/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  notification-service:
+    image: ghcr.io/tomascardozo/medical-appointment-system/notification-service:latest
+    environment:
+      CONFIG_SERVER_URL: http://config-server:8888
+      SPRING_PROFILES_ACTIVE: docker
+      NOTIFICATION_SERVICE_PORT: 8084
+      EUREKA_SERVER_URL: http://discovery-server:8761/eureka
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:-replace-this-with-a-long-secret-key-at-least-32-bytes}
+      NOTIFICATIONS_PROVIDER: ${NOTIFICATIONS_PROVIDER:-log}
+      NOTIFICATIONS_FROM_ADDRESS: ${NOTIFICATIONS_FROM_ADDRESS:-no-reply@medical.local}
+    ports:
+      - "${NOTIFICATION_SERVICE_PORT:-8084}:8084"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8084/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  frontend-web-app:
+    image: ghcr.io/tomascardozo/medical-appointment-system/frontend-web-app:latest
+    ports:
+      - "${FRONTEND_WEB_APP_PORT:-5173}:80"
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    ports:
+      - "${KAFKA_EXTERNAL_PORT:-9094}:9094"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://0.0.0.0:9094,CONTROLLER://kafka:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://localhost:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092 >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    profiles: ["mail"]
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+volumes:
+  postgres-data:

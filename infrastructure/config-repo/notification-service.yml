@@ -1,0 +1,52 @@
+server:
+  port: 8084
+
+spring:
+  application:
+    name: notification-service
+  datasource:
+    username: ${POSTGRES_USER:postgres}
+    password: ${POSTGRES_PASSWORD:postgres}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: true
+  flyway:
+    enabled: true
+  kafka:
+    consumer:
+      group-id: notification-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    listener:
+      missing-topics-fatal: false
+
+eureka:
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+
+app:
+  security:
+    jwt:
+      secret: ${AUTH_JWT_SECRET:replace-this-with-a-long-secret-key-at-least-32-bytes}
+  kafka:
+    topics:
+      appointment-created: appointment.created
+      appointment-cancelled: appointment.cancelled
+      appointment-rescheduled: appointment.rescheduled
+      appointment-reminder-requested: appointment.reminder.requested
+  notifications:
+    provider: ${NOTIFICATIONS_PROVIDER:log}
+    from-address: ${NOTIFICATIONS_FROM_ADDRESS:no-reply@medical.local}
+
+management:
+  health:
+    mail:
+      enabled: false
+  endpoints:
+    web:
+      exposure:
+        include: health,info

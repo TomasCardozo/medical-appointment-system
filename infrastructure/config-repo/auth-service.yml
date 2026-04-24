@@ -1,0 +1,28 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: auth-service
+  datasource:
+    username: ${POSTGRES_USER:postgres}
+    password: ${POSTGRES_PASSWORD:postgres}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: true
+  flyway:
+    enabled: true
+
+eureka:
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+
+app:
+  security:
+    jwt:
+      secret: ${AUTH_JWT_SECRET:replace-this-with-a-long-secret-key-at-least-32-bytes}
+      expiration-ms: ${AUTH_JWT_EXPIRATION_MS:3600000}

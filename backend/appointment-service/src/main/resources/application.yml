@@ -1,0 +1,16 @@
+spring:
+  application:
+    name: appointment-service
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+  config:
+    import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}
+
+server:
+  port: ${APPOINTMENT_SERVICE_PORT:8083}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

@@ -1,0 +1,81 @@
+name: Publish Docker Images
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: config-server
+            context: ./backend/config-server
+            dockerfile: ./backend/config-server/Dockerfile
+          - image: discovery-server
+            context: ./backend/discovery-server
+            dockerfile: ./backend/discovery-server/Dockerfile
+          - image: api-gateway
+            context: ./backend/api-gateway
+            dockerfile: ./backend/api-gateway/Dockerfile
+          - image: auth-service
+            context: ./backend/auth-service
+            dockerfile: ./backend/auth-service/Dockerfile
+          - image: doctor-service
+            context: ./backend/doctor-service
+            dockerfile: ./backend/doctor-service/Dockerfile
+          - image: appointment-service
+            context: ./backend/appointment-service
+            dockerfile: ./backend/appointment-service/Dockerfile
+          - image: notification-service
+            context: ./backend/notification-service
+            dockerfile: ./backend/notification-service/Dockerfile
+          - image: frontend-web-app
+            context: ./frontend/web-app
+            dockerfile: ./frontend/web-app/Dockerfile
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}/${{ matrix.image }}
+          tags: |
+            type=sha
+            type=ref,event=branch
+            type=raw,value=latest,enable={{is_default_branch}}
+          labels: |
+            org.opencontainers.image.title=${{ matrix.image }}
+            org.opencontainers.image.description=Medical Appointment System service image
+            org.opencontainers.image.vendor=TomasCardozo
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.licenses=MIT
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
