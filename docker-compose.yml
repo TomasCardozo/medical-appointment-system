@@ -25,7 +25,11 @@ services:
     volumes:
       - ./infrastructure/config-repo:/config-repo:ro
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:8888/actuator/health || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS http://localhost:8888/actuator/health || exit 1",
+        ]
       interval: 10s
       timeout: 5s
       retries: 20
@@ -43,7 +47,11 @@ services:
       config-server:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:8761/actuator/health || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS http://localhost:8761/actuator/health || exit 1",
+        ]
       interval: 10s
       timeout: 5s
       retries: 20
@@ -64,7 +72,11 @@ services:
       discovery-server:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/actuator/health || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS http://localhost:8080/actuator/health || exit 1",
+        ]
       interval: 10s
       timeout: 5s
       retries: 20
@@ -91,7 +103,11 @@ services:
       discovery-server:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:8081/actuator/health || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS http://localhost:8081/actuator/health || exit 1",
+        ]
       interval: 10s
       timeout: 5s
       retries: 20
@@ -117,7 +133,11 @@ services:
       discovery-server:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:8082/actuator/health || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS http://localhost:8082/actuator/health || exit 1",
+        ]
       interval: 10s
       timeout: 5s
       retries: 20
@@ -143,9 +163,13 @@ services:
       discovery-server:
         condition: service_healthy
       kafka:
-        condition: service_healthy
+        condition: service_started
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:8083/actuator/health || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS http://localhost:8083/actuator/health || exit 1",
+        ]
       interval: 10s
       timeout: 5s
       retries: 20
@@ -173,9 +197,13 @@ services:
       discovery-server:
         condition: service_healthy
       kafka:
-        condition: service_healthy
+        condition: service_started
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:8084/actuator/health || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS http://localhost:8084/actuator/health || exit 1",
+        ]
       interval: 10s
       timeout: 5s
       retries: 20
@@ -208,7 +236,11 @@ services:
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
     healthcheck:
-      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092 >/dev/null 2>&1 || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "kafka-broker-api-versions --bootstrap-server localhost:9092 >/dev/null 2>&1 || exit 1",
+        ]
       interval: 10s
       timeout: 10s
       retries: 12
